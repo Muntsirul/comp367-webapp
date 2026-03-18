@@ -5,17 +5,54 @@ pipeline {
         maven 'Maven3'
     }
     
+    environment {
+        DOCKER_IMAGE = 'muntasirulhaque/comp367-webapp'
+        DOCKER_TAG = "${BUILD_NUMBER}"
+    }
+    
     stages {
-        stage('Build') {
+        stage('Checkout') {
             steps {
-                
+                checkout scm
+            }
+        }
+        
+        stage('Build Maven Project') {
+            steps {
                 bat 'mvn clean package'
             }
         }
-        stage('Archive') {
+        
+        stage('Docker Login') {
             steps {
-                archiveArtifacts artifacts: 'target/*.war', fingerprint: true
+                withCredentials([usernamePassword(
+                    credentialsId: 'docker-hub-credentials',
+                    usernameVariable: 'DOCKER_USERNAME',
+                    passwordVariable: 'DOCKER_PASSWORD'
+                )]) {
+                    bat 'echo %DOCKER_PASSWORD% | docker login -u %DOCKER_USERNAME% --password-stdin'
+                }
             }
+        }
+        
+        stage('Docker Build') {
+            steps {
+                bat "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
+                bat "docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest"
+            }
+        }
+        
+        stage('Docker Push') {
+            steps {
+                bat "docker push ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                bat "docker push ${DOCKER_IMAGE}:latest"
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo 'Pipeline executed successfully! Docker image pushed to Docker Hub!'
         }
     }
 }
