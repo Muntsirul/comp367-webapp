@@ -17,6 +17,13 @@ pipeline {
             }
         }
         
+        stage('Clean Maven Repository') {
+            steps {
+                // Delete corrupted plugin folder (ignore errors if it doesn't exist)
+                bat 'rmdir /s /q C:\\WINDOWS\\system32\\config\\systemprofile\\.m2\\repository\\org\\apache\\maven\\plugins\\maven-clean-plugin || exit 0'
+            }
+        }
+        
         stage('Build Maven Project') {
             steps {
                 bat 'mvn clean package'
